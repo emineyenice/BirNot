@@ -1,0 +1,141 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>BirNot</title>
+    <link rel="icon" type="image/png" href="Images//logo.png" />
+    <link href="Content/bootstrap.min.css" rel="stylesheet" />
+    <link href="Content/toastr.min.css" rel="stylesheet" />
+    <link href="Content/site.css" rel="stylesheet" />
+</head>
+<body>
+    <div id="uyelikSayfa">
+        <form class="form-signin giris" id="frmGirisKayit">
+            <img class="mb-4" src="Images/logo.png" alt="" width="72" height="72">
+            <div class="mb-3">
+                <div class="btn-group" id="girisKayit">
+                    <a href="#" class="btn btn-sm btn-outline-secondary active" data-tur="giris" id="switchGiris">Giriş Yap</a>
+                    <a href="#" class="btn btn-sm btn-outline-secondary" data-tur="kayit" id="switchKayit">Kaydol</a>
+                </div>
+            </div>
+
+            <label for="inputEmail" class="sr-only">Email address</label>
+            <input type="email" id="inputEmail" name="Email" class="form-control" placeholder="Email address" required autofocus>
+            <label for="inputPassword" class="sr-only">Password</label>
+            <input type="password" id="inputPassword" name="Password" class="form-control" placeholder="Password" required>
+            <label for="inputConfirmPassword" class="sr-only">Confirm Password</label>
+            <input type="password" id="inputConfirmPassword" name="ConfirmPassword" class="form-control" placeholder="Confirm Password" required disabled>
+            <div class="checkbox mb-3 remember-me-div">
+                <label>
+                    <input type="checkbox" id="inputRememberMe"> Remember me
+                </label>
+            </div>
+            <button class="btn btn-lg btn-primary btn-block" type="submit">Giriş Yap</button>
+            <p class="mt-5 mb-3 text-muted">&copy; 2017-2021</p>
+        </form>
+    </div>
+    <div id="notlarSayfa" style="display: none"></div>
+
+    <script src="Scripts/jquery-3.6.0.min.js"></script>
+    <script src="Scripts/bootstrap.bundle.min.js"></script>
+    <script src="Scripts/toastr.min.js"></script>
+    <script>
+        var apiUrl = "https://localhost:44378/";
+        $("#girisKayit > a").click(function (event) {
+            // alert("merhaba");
+            event.preventDefault();
+            var a = this;
+            $(a).addClass("active");
+            $(a).siblings("a").removeClass("active");
+            var tur = $(this).data("tur");
+            $('.form-signin button[type="submit"]').text(
+                tur == "giris" ? "Giriş Yap" : "Kayıt Ol");
+            //alert(tur);
+            switch (tur) {
+                case "giris":
+                    $(".form-signin").removeClass("kayit").addClass("giris");
+                    $("#inputConfirmPassword").prop("disabled", true);
+
+                    break;
+                case "kayit":
+                    $(".form-signin").removeClass("giris").addClass("kayit");
+                    $("#inputConfirmPassword").prop("disabled", false);
+                    break;
+            }
+            //alert(tur);
+            $("#inputEmail").focus();
+            $("#frmGirisKayit")[0].reset(); // $("#frmGirisKayit")get(0).reset();
+        });
+
+        $("#frmGirisKayit").submit(function (event) {
+            event.preventDefault();
+            var frm = this;
+            //Kayit modu
+            if ($(frm).hasClass("kayit")) {
+                $.ajax({
+                    type: "post",
+                    url: apiUrl + "api/Account/Register",
+                    data: $(frm).serialize(),
+                    success: function (data) {
+                        frm.reset();
+                        $("#switchGiris").trigger("click");
+                        toastr.success("Hesabınız oluşturuldu.Şimdi giriş yapabilirsiniz.", "Kayıt başarılı.");
+                    },
+                    error: function (xhr, status, error) {
+                        showErrors(xhr.responseJSON);
+                        //console.log(xhr);
+                        //console.log(status);
+                        //console.log(error);
+
+                    }
+                });
+            }
+            //giriş modu
+            else {
+                //https://docs.microsoft.com/en-us/aspnet/web-api/overview/security/individual-accounts-in-web-api
+
+                var email = $("#inputEmail").val();
+                var password = $("#inputPassword").val();
+                $.ajax({
+                    type: "post",
+                    url: apiUrl + "Token",
+                    data: { grant_type: "password", userName: email, password: password },
+                    success: function (data) {
+                        var rememberMe = $("#inputRememberMe").prop("checked");
+                        // console.log(rememberMe);
+                        var storage = rememberMe ? localStorage : sessionStorage;
+                        //beni hatırla işaretliyse localstorage verileri eklesin 
+                        girisVerileriniTemizle();
+                        storage["login"] = JSON.stringify(data); //gelen veriyi json a dönüştürüp storage e kaydettik
+                        toastr.success("Merhaba " + data.userName + " , başarıyla giriş yaptın.");
+                        frm.reset();
+                    },
+                    error: function (xhr, status, error) {
+                        showErrors(xhr.responseJSON);
+                    }
+                });
+            }
+        });
+        function girisVerileriniTemizle() {
+            localStorage.removeItem("login");
+            sessionStorage.removeItem("login");
+        }
+
+        function showErrors(data) {
+            if (data.ModelState) {
+                var ms = data.ModelState;
+                for (var key in ms) {
+                    var errors = ms[key];
+                    for (const error of errors) {
+                        toastr.error(error);
+                    }
+                }
+            }
+            else if (data.error_description) {
+                toastr.error(data.error_description);
+            }
+        }
+    </script>
+</body>
+</html>
